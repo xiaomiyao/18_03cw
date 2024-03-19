@@ -5,10 +5,11 @@
 
 void generateMaze(std::vector<std::vector<char>>& maze, int size); // Генерация стен лабиринта
 void placePlayer(std::vector<std::vector<char>>& maze, int size, int& playerRow, int& playerCol); // Случайное размещение игрока внутри лабиринта
-void placeTreasure(std::vector<std::vector<char>>& maze, int size, int& treasureRow, int& treasureCol); // Случайное размещение сокровища внутри лабиринта
+void placeTreasure(std::vector<std::vector<char>>& maze, int size, int& treasureRow, int& treasureCol);
 void printMaze(const std::vector<std::vector<char>>& maze); // Вывод лабиринта на экран
-bool makeMove(char move, std::vector<std::vector<char>>& maze, int size, int& playerRow, int& playerCol, int treasureRow, int treasureCol); // Движение внутри лабиринта
+bool makeMove(char move, std::vector<std::vector<char>>& maze, int size, int& playerRow, int& playerCol, int treasureRow, int treasureCol, bool& gameOver); // Движение внутри лабиринта
 bool isValidMove(int row, int col, int size, const std::vector<std::vector<char>>& maze); // Проверка допустимости хода в лабиринте
+void placeTraps(std::vector<std::vector<char>>& maze, int size);
 
 int main() {
     srand(time(nullptr)); // Инициализация генератора случайных чисел
@@ -26,25 +27,20 @@ int main() {
         std::vector<std::vector<char>> maze(size, std::vector<char>(size, 'x')); // Инициализация лабиринта символами 'x'
         generateMaze(maze, size); // Генерация лабиринта
 
-        // Добавление границ лабиринта
-        for (int i = 0; i < size; ++i) {
-            maze[i][0] = '|';
-            maze[i][size - 1] = '|';
-            maze[0][i] = '-';
-            maze[size - 1][i] = '-';
-        }
 
         int playerRow, playerCol, treasureRow, treasureCol;
         placePlayer(maze, size, playerRow, playerCol); // Размещение игрока
         placeTreasure(maze, size, treasureRow, treasureCol); // Размещение сокровища
 
-        printMaze(maze); // Вывод лабиринта на экран
+        placeTraps(maze, size);
 
-        while (true) {
+        printMaze(maze); // Вывод лабиринта на экран
+        bool gameOver = false;
+        while (!gameOver) {
             char move;
             std::cout << "Enter move (w - up, s - down, a - left, d - right, backspace - take treasure): ";
             std::cin >> move; // Ввод игроком действия
-            if (!makeMove(move, maze, size, playerRow, playerCol, treasureRow, treasureCol)) { // Проверка и выполнение действия игрока
+            if (!makeMove(move, maze, size, playerRow, playerCol, treasureRow, treasureCol, gameOver)) { // Проверка и выполнение действия игрока
                 std::cout << "Invalid move! Try again." << std::endl; // В случае некорректного действия выводится сообщение об ошибке
                 continue;
             }
@@ -76,6 +72,16 @@ void generateMaze(std::vector<std::vector<char>>& maze, int size) {
             }
         }
     }
+
+    // Добавление границ лабиринта
+    for (int i = 0; i < size; ++i) {
+        maze[i][0] = '|';
+        maze[i][size - 1] = '|';
+        maze[0][i] = '-';
+        maze[size - 1][i] = '-';
+    }
+
+
 }
 
 void placePlayer(std::vector<std::vector<char>>& maze, int size, int& playerRow, int& playerCol) {
@@ -91,6 +97,23 @@ void placeTreasure(std::vector<std::vector<char>>& maze, int size, int& treasure
     } while (maze[treasureRow][treasureCol] == 'x'); // Проверка, чтобы сокровище не попало на стену
     maze[treasureRow][treasureCol] = '$'; // Помещение символа сокровища в лабиринт
 }
+void placeTraps(std::vector<std::vector<char>>& maze, int size) {
+    //randomize x coordinate
+    int trapRow = rand() % (size - 2) + 1;
+    //rand y coordinate
+    int trapCol = rand() % (size - 2) + 1;
+    //check if coordinate is empty
+    if (maze[trapRow][trapCol]!='x' && maze[trapRow][trapCol] != '?' && maze[trapRow][trapCol] != '$') {
+        maze[trapRow][trapCol] = '*';
+        return;
+    }
+    else {
+        placeTraps(maze, size);
+        std::cout << "returned from recursion";
+    }
+    //if yes  place trap and return 
+    //if not repeat
+}
 
 void printMaze(const std::vector<std::vector<char>>& maze) {
     for (const auto& row : maze) {
@@ -101,7 +124,7 @@ void printMaze(const std::vector<std::vector<char>>& maze) {
     }
 }
 
-bool makeMove(char move, std::vector<std::vector<char>>& maze, int size, int& playerRow, int& playerCol, int treasureRow, int treasureCol) {
+bool makeMove(char move, std::vector<std::vector<char>>& maze, int size, int& playerRow, int& playerCol, int treasureRow, int treasureCol, bool& gameOver) {
     int newRow = playerRow;
     int newCol = playerCol;
 
@@ -130,7 +153,13 @@ bool makeMove(char move, std::vector<std::vector<char>>& maze, int size, int& pl
     if (isValidMove(newRow, newCol, size, maze)) {
         maze[playerRow][playerCol] = ' '; // Очистка предыдущей позиции игрока
         playerRow = newRow; // Обновление координат игрока
-        playerCol = newCol;
+        playerCol = newCol; 
+        if (maze[playerRow][playerCol] == '*') {
+            gameOver = true;
+            std::cout << "You walked into a trap and died. " << std::endl;
+        }
+
+
         maze[playerRow][playerCol] = '?'; // Обновление новой позиции игрока
         return true; // Ход выполнен успешно
     }

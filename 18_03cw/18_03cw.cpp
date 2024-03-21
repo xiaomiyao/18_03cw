@@ -2,6 +2,8 @@
 #include <vector>
 #include <cstdlib>
 #include <ctime>
+#include <stdexcept>
+#include <limits>
 
 void generateMaze(std::vector<std::vector<char>>& maze, int size); // Генерация стен лабиринта
 void placePlayer(std::vector<std::vector<char>>& maze, int size, int& playerRow, int& playerCol); // Случайное размещение игрока внутри лабиринта
@@ -12,50 +14,60 @@ bool isValidMove(int row, int col, int size, const std::vector<std::vector<char>
 void placeTraps(std::vector<std::vector<char>>& maze, int size);
 
 int main() {
-    srand(time(nullptr)); // Инициализация генератора случайных чисел
+    srand(time(nullptr)); // Initialize random number generator.
 
     while (true) {
-        int size;
-        std::cout << "Enter maze size (between 15 and 50): ";
-        std::cin >> size;
+        try { // Start of try block to catch exceptions.
+            int size;
+            std::cout << "Enter maze size (between 15 and 50): ";
+            std::cin >> size;
 
-        if (size < 15 || size > 50) {
-            std::cout << "Invalid size! Please enter a size between 15 and 50." << std::endl; // Проверка корректности размера лабиринта
-            continue;
+            // Check if input is a valid integer and within the desired range.
+            if (std::cin.fail() || size < 15 || size > 50) {
+                std::cin.clear(); // Clear error flag on cin.
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Ignore the rest of the line.
+                throw std::out_of_range("Invalid size! Please enter a size between 15 and 50."); // Throw an exception if input is invalid.
+            }
+
+            std::vector<std::vector<char>> maze(size, std::vector<char>(size, 'x')); // Initialize maze with 'x'.
+            generateMaze(maze, size); // Generate the maze.
+
+            int playerRow, playerCol, treasureRow, treasureCol;
+            placePlayer(maze, size, playerRow, playerCol); // Place the player in the maze.
+            placeTreasure(maze, size, treasureRow, treasureCol); // Place the treasure in the maze.
+
+            placeTraps(maze, size);
+
+            printMaze(maze); // Print the maze.
+            bool gameOver = false;
+            while (!gameOver) {
+                char move;
+                std::cout << "Enter move (w - up, s - down, a - left, d - right, backspace - take treasure): ";
+                std::cin >> move; // Player inputs their move.
+
+                if (!makeMove(move, maze, size, playerRow, playerCol, treasureRow, treasureCol, gameOver)) {
+                    std::cout << "Invalid move! Try again." << std::endl; // In case of an invalid move.
+                    continue;
+                }
+
+                if (playerRow == treasureRow && playerCol == treasureCol) { // Check if the player has found the treasure.
+                    std::cout << "Congratulations! You found the treasure!" << std::endl; // Congratulate the player.
+                    break;
+                }
+
+                printMaze(maze); // Print the updated maze.
+            }
         }
-
-        std::vector<std::vector<char>> maze(size, std::vector<char>(size, 'x')); // Инициализация лабиринта символами 'x'
-        generateMaze(maze, size); // Генерация лабиринта
-
-
-        int playerRow, playerCol, treasureRow, treasureCol;
-        placePlayer(maze, size, playerRow, playerCol); // Размещение игрока
-        placeTreasure(maze, size, treasureRow, treasureCol); // Размещение сокровища
-
-        placeTraps(maze, size);
-
-        printMaze(maze); // Вывод лабиринта на экран
-        bool gameOver = false;
-        while (!gameOver) {
-            char move;
-            std::cout << "Enter move (w - up, s - down, a - left, d - right, backspace - take treasure): ";
-            std::cin >> move; // Ввод игроком действия
-            if (!makeMove(move, maze, size, playerRow, playerCol, treasureRow, treasureCol, gameOver)) { // Проверка и выполнение действия игрока
-                std::cout << "Invalid move! Try again." << std::endl; // В случае некорректного действия выводится сообщение об ошибке
-                continue;
-            }
-            if (playerRow == treasureRow && playerCol == treasureCol) { // Проверка, достиг ли игрок сокровища
-                std::cout << "Congratulations! You found the treasure!" << std::endl; // В случае нахождения сокровища выводится сообщение о победе
-                break;
-            }
-            printMaze(maze); // Вывод обновленного лабиринта на экран
+        catch (const std::exception& e) { // Catch exceptions.
+            std::cout << "Error: " << e.what() << std::endl; // Print the error message.
+            continue; // Continue to the next iteration of the loop.
         }
 
         char playAgain;
         std::cout << "Do you want to play again? (y/n): ";
         std::cin >> playAgain;
         if (playAgain != 'y' && playAgain != 'Y') {
-            break; // Выход из основного цикла, если пользователь не хочет играть снова
+            break; // Exit the loop if the player does not want to play again.
         }
     }
 
